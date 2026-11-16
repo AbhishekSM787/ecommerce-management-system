@@ -1,0 +1,44 @@
+CREATE DATABASE IF NOT EXISTS ecommerce_db;
+USE ecommerce_db;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'USER',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  description VARCHAR(1000) NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  category VARCHAR(80) NOT NULL,
+  stock INT NOT NULL DEFAULT 0,
+  image_url VARCHAR(1000),
+  CONSTRAINT chk_product_price CHECK (price > 0),
+  CONSTRAINT chk_product_stock CHECK (stock >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS customer_orders (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  total DECIMAL(10,2) NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'PLACED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_order_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  product_id BIGINT NULL,
+  product_name VARCHAR(150) NOT NULL,
+  quantity INT NOT NULL,
+  unit_price DECIMAL(10,2) NOT NULL,
+  CONSTRAINT fk_item_order FOREIGN KEY (order_id) REFERENCES customer_orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_item_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
+  CONSTRAINT chk_item_quantity CHECK (quantity > 0)
+);

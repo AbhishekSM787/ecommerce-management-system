@@ -11,15 +11,16 @@ import java.math.BigDecimal;
 public class OrderService {
     private final ProductRepository products;
     private final CustomerOrderRepository orders;
-
-    public OrderService(ProductRepository products, CustomerOrderRepository orders) {
-        this.products = products; this.orders = orders;
+    private final UserRepository users;
+    public OrderService(ProductRepository products, CustomerOrderRepository orders, UserRepository users) {
+        this.products = products; this.orders = orders; this.users = users;
     }
-
     @Transactional
-    public CustomerOrder place(OrderRequest request) {
+    public CustomerOrder place(OrderRequest request, String email) {
+        User user = users.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
         BigDecimal total = BigDecimal.ZERO;
-        CustomerOrder order = new CustomerOrder(request.customerName(), request.customerEmail(), total);
+        java.util.List<OrderItem> requestedItems = new java.util.ArrayList<>();
 
         for (OrderRequest.ItemRequest requested : request.items()) {
             Product product = products.findById(requested.productId())
@@ -27,16 +28,13 @@ public class OrderService {
             if (product.getStock() < requested.quantity()) {
                 throw new IllegalArgumentException("Insufficient stock for " + product.getName());
             }
-            BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(requested.quantity()));
-            total = total.add(lineTotal);
-            order.addItem(new OrderItem(product.getId(), product.getName(), requested.quantity(), product.getPrice()));
+            product.reduceStock(requested.quantity());
+            total = total.add(product.getPrice().multiply(BigDecimal.valueOf(requested.quantity())));
+            requestedItems.add(new OrderItem(product, requested.quantity()));
         }
-        // Persist the calculated total on the order.
-        CustomerOrder completed = new CustomerOrder(request.customerName(), request.customerEmail(), total);
-        for (OrderRequest.ItemRequest requested : request.items()) {
-            Product product = products.findById(requested.productId()).orElseThrow();
-            completed.addItem(new OrderItem(product.getId(), product.getName(), requested.quantity(), product.getPrice()));
-        }
-        return orders.save(completed);
+
+        CustomerOrder order = new CustomerOrder(user, total);
+        requestedItems.forEach(order::addItem);
+        return orders.save(order);
     }
 }

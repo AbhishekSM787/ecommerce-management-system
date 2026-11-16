@@ -1,6 +1,8 @@
 package com.example.ecommerce.repository;
-
 import com.example.ecommerce.model.CustomerOrder;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Long> {}
+import java.util.List;
+public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Long> {
+    List<CustomerOrder> findAllByOrderByCreatedAtDesc();
+    List<CustomerOrder> findByUserEmailOrderByCreatedAtDesc(String email);
+}
